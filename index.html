@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macho Alfa - Barbería Premium</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="Macho Alfa - Barbería premium. Reserva tu cita, conoce servicios y horarios con AlfaBot.">
+</head>
+<body>
+    <nav class="topnav">
+        <div class="brand">
+            <img src="https://machoalfa.com.mx/wp-content/uploads/2024/01/logo-machoalfa.png" alt="Macho Alfa">
+            <span>Macho Alfa</span>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#services">Servicios</a></li>
+            <li><a href="#about">Nosotros</a></li>
+            <li><a href="#contact">Contacto</a></li>
+        </ul>
+        <button id="chatButton" class="cta">Reserva</button>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-inner">
+            <h1>Precision. Estilo. Poder.</h1>
+            <p class="sub">El fade perfecto. Reserva con AlfaBot en segundos.</p>
+            <div class="hero-ctas">
+                <button id="heroReserve" class="btn-primary">Reservar ahora</button>
+                <a href="#services" class="btn-secondary">Ver servicios</a>
+            </div>
+        </div>
+        <div class="hero-ornament"></div>
+    </header>
+
+    <main>
+        <section id="services" class="section">
+            <div class="container">
+                <h2>Nuestros Servicios</h2>
+                <p class="lead">Servicios pensados para hombres que exigen excelencia.</p>
+                <div class="services">
+                    <div class="service-card" data-service="Fade Clásico">
+                        <img src="https://images.unsplash.com/photo-1558611848-73f7eb4001d2?w=800" alt="Fade Clásico">
+                        <div class="card-body">
+                            <h3>Fade Clásico</h3>
+                            <p class="price">$500 MXN • 45 min</p>
+                        </div>
+                    </div>
+                    <div class="service-card" data-service="Corte + Barba Premium">
+                        <img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800" alt="Corte + Barba Premium">
+                        <div class="card-body">
+                            <h3>Corte + Barba Premium</h3>
+                            <p class="price">$850 MXN • 70 min</p>
+                        </div>
+                    </div>
+                    <div class="service-card" data-service="Afeitado Clásico">
+                        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800" alt="Afeitado Clásico">
+                        <div class="card-body">
+                            <h3>Afeitado Clásico</h3>
+                            <p class="price">$400 MXN • 30 min</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section alt">
+            <div class="container small">
+                <h2>¿Por qué Macho Alfa?</h2>
+                <p>Precisión milimétrica, equipo profesional y ambiente auténtico. AlfaBot te ayuda a reservar y expulsar dudas en segundos.</p>
+            </div>
+        </section>
+
+        <section id="contact" class="section">
+            <div class="container small">
+                <h2>Contacto</h2>
+                <p>Tel: <a href="tel:+5211234567890">+52 1 123 456 7890</a> • Dirección: Av. Principal 123</p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container small">
+            <p>© 2025 Macho Alfa ® - Todos los derechos reservados</p>
+        </div>
+    </footer>
+
+    <div id="chatModal" class="chat-modal" aria-hidden="true">
+        <div class="chat-card">
+            <header class="chat-header">
+                <div class="brand">
+                    <img src="https://machoalfa.com.mx/wp-content/uploads/2024/01/logo-machoalfa.png" alt="AlfaBot"/>
+                    <div>
+                        <strong>AlfaBot</strong>
+                        <small>Macho Alfa - Asistente de citas</small>
+                    </div>
+                </div>
+                <button class="close" onclick="closeChat()">×</button>
+            </header>
+            <div id="chatMessages" class="chat-body"></div>
+            <div id="chatOptions" class="chat-options"></div>
+            <footer class="chat-input">
+                <input type="text" id="messageInput" placeholder="Escribe aquí..." onkeypress="handleKeyPress(event)"/>
+                <button onclick="sendMessage()">Enviar</button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="servicePopup" class="service-popup" aria-hidden="true">
+        <div class="popup-card">
+            <button class="close" onclick="closePopup()">×</button>
+            <h3 id="popupTitle"></h3>
+            <p id="popupPrice"></p>
+            <img id="popupImage" src="" alt="Servicio">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
