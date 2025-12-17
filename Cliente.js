@@ -1,4 +1,3 @@
-// Cliente.js - clase simple para representar cliente
 export class Cliente {
     constructor(nombre, telefono){
         this.nombre = nombre || '';
