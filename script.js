@@ -1,40 +1,43 @@
-// ============================================
-// AlfaBot - Chatbot frontend (sin IA)
-// ============================================
+// ========================================
+// AlfaBot Mejorado - Macho Alfa Barbería
+// ========================================
 
-// ========== CLASES ==========
 class Cliente {
-    constructor(nombre, telefono){
-        this.nombre = nombre || '';
-        this.telefono = telefono || '';
+    constructor(nombre, telefono) {
+        this.nombre = nombre.trim();
+        this.telefono = telefono.replace(/\s/g, '');
     }
 }
 
 class Citas {
-    constructor(){
-        this.lista = [];
+    constructor() {
+        this.lista = JSON.parse(localStorage.getItem('citasMachoAlfa')) || [];
     }
 
-    agendar(cliente, servicio, fechaHora){
-        if(this.lista.some(c=>c.fechaHora === fechaHora)) return false;
+    agendar(cliente, servicio, fechaHora) {
+        if (this.lista.some(c => c.fechaHora === fechaHora)) return false;
         this.lista.push({ cliente, servicio, fechaHora });
+        localStorage.setItem('citasMachoAlfa', JSON.stringify(this.lista));
         return true;
     }
 
-    cancelar(nombre, telefono){
-        const idx = this.lista.findIndex(c => c.cliente.nombre.toLowerCase() === nombre.toLowerCase() && (c.cliente.telefono || '').includes(telefono));
-        if(idx === -1) return false;
-        this.lista.splice(idx,1);
-        return true;
+    cancelar(telefono, fechaHora) {
+        const inicial = this.lista.length;
+        this.lista = this.lista.filter(c => !(c.cliente.telefono === telefono && c.fechaHora === fechaHora));
+        if (this.lista.length !== inicial) {
+            localStorage.setItem('citasMachoAlfa', JSON.stringify(this.lista));
+            return true;
+        }
+        return false;
     }
 
-    listar(){
-        return this.lista.map(x => ({ ...x }));
+    estaOcupado(fechaHora) {
+        return this.lista.some(c => c.fechaHora === fechaHora);
     }
 }
 
 class MachoAlfaBot {
-    constructor(){
+    constructor() {
         this.citas = new Citas();
         this.serviciosList = [
             { name: 'Fade Clásico', price: 500, duration: 45 },
@@ -43,264 +46,396 @@ class MachoAlfaBot {
         ];
     }
 
-    servicios(){
-        return this.serviciosList;
-    }
-
-    isAvailable(fechaHora){
-        const lista = this.citas.listar();
-        return !lista.some(c => c.fechaHora === fechaHora);
-    }
-
-    programarCita(cliente, servicio, fechaHora){
-        return this.citas.agendar(cliente, servicio, fechaHora);
-    }
-
-    cancelarCita(nombre, telefono){
-        return this.citas.cancelar(nombre, telefono);
-    }
-
-    listarCitas(){
-        return this.citas.listar();
-    }
+    servicios() { return this.serviciosList; }
+    isAvailable(fechaHora) { return !this.citas.estaOcupado(fechaHora); }
+    programarCita(cliente, servicio, fechaHora) { return this.citas.agendar(cliente, servicio, fechaHora); }
+    cancelarCita(telefono, fechaHora) { return this.citas.cancelar(telefono, fechaHora); }
 }
 
-// ========== INSTANCIA BOT ==========
-// ========== INSTANCIA BOT ==========
 const bot = new MachoAlfaBot();
 
-// ========== ESTADO DEL FLUJO ==========
 let flow = { state: 'idle', buffer: {} };
 
-// ========== UI HOOKS (serán asignadas en DOMContentLoaded) ==========
-let chatButton, chatModal, chatMessages, chatOptions, messageInput, heroReserve;
+let chatModal, chatMessages, chatOptions, messageInput;
 
-// ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔧 DOMContentLoaded disparado');
-    
-    // Asignar referencias a elementos DOM
-    chatButton = document.getElementById('chatButton');
     chatModal = document.getElementById('chatModal');
     chatMessages = document.getElementById('chatMessages');
     chatOptions = document.getElementById('chatOptions');
     messageInput = document.getElementById('messageInput');
-    heroReserve = document.getElementById('heroReserve');
-    
-    console.log('chatButton:', chatButton);
-    console.log('chatModal:', chatModal);
-    console.log('messageInput:', messageInput);
-    
-    // Mostrar botón inmediatamente
-    if(chatButton) {
-        chatButton.style.display = 'inline-block';
-        console.log('✓ chatButton visible');
-    } else {
-        console.error('✗ chatButton NO encontrado');
-    }
-    
-    // Asignar event listeners
-    if(chatButton) {
-        chatButton.onclick = openChat;
-        console.log('✓ chatButton.onclick = openChat');
-    }
-    if(heroReserve) {
-        heroReserve.onclick = openChat;
-        console.log('✓ heroReserve.onclick = openChat');
-    } else {
-        console.warn('⚠ heroReserve NO encontrado');
-    }
-    
-    // Listeners para tarjetas de servicio
-    const cards = document.querySelectorAll('.service-card');
-    console.log('Tarjetas encontradas:', cards.length);
-    
-    cards.forEach(card=>{
-        card.addEventListener('click', ()=>{
-            const name = card.dataset.service || card.querySelector('h3')?.textContent;
-            const s = bot.servicios().find(x=>x.name===name) || {price:'—', duration:''};
-            showServicesPopup(name, `$${s.price} MXN • ${s.duration} min`, card.querySelector('img')?.src);
+
+    document.getElementById('chatButton')?.addEventListener('click', openChat);
+    document.getElementById('heroReserve')?.addEventListener('click', openChat);
+
+    document.querySelectorAll('.service-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const name = card.dataset.service;
+            const servicio = bot.servicios().find(s => s.name === name);
+            showServicesPopup(name, `$${servicio.price} MXN • ${servicio.duration} min`, card.querySelector('img').src);
         });
     });
-    
-    console.log('✓ Inicialización completa');
 });
 
-function openChat(){
-    chatModal.style.display = 'block';
+function openChat() {
+    chatModal.style.display = 'flex';
     chatModal.setAttribute('aria-hidden', 'false');
-    showWelcome();
-}
-function closeChat(){
-    chatModal.style.display = 'none';
-    chatModal.setAttribute('aria-hidden', 'true');
-    clearOptions();
+    if (flow.state === 'idle') showWelcome();
 }
 
-function showWelcome(){
+function closeChat() {
+    chatModal.style.display = 'none';
+    chatModal.setAttribute('aria-hidden', 'true');
+}
+
+function showWelcome() {
     flow = { state: 'menu', buffer: {} };
-    addBotMessage('¿En qué puedo ayudarte? Puedes programar una cita, consultar horarios disponibles, conocer nuestros servicios, cancelar una cita existente o obtener información de contacto.');
+    addBotMessage('¡Hola! 👋 Soy <strong>AlfaBot</strong>, tu asistente en Macho Alfa Barbería. ¿En qué te puedo ayudar hoy?');
     showMenuOptions();
 }
 
-function showMenuOptions(){
+function showMenuOptions() {
     clearOptions();
-    const opts = [
-        { id: 'book', label: 'Programar cita' },
-        { id: 'hours', label: 'Consultar horarios' },
-        { id: 'services', label: 'Ver servicios' },
+    const opciones = [
+        { id: 'book', label: 'Reservar cita' },
+        { id: 'services', label: 'Ver servicios y precios' },
+        { id: 'hours', label: 'Horarios' },
         { id: 'cancel', label: 'Cancelar cita' },
-        { id: 'contact', label: 'Información de contacto' }
+        { id: 'contact', label: 'Ubicación y contacto' }
     ];
-    opts.forEach(o => {
+    opciones.forEach(op => {
         const btn = document.createElement('button');
-        btn.textContent = o.label; btn.onclick = () => handleOption(o.id);
+        btn.textContent = op.label;
+        btn.onclick = () => handleOption(op.id);
         chatOptions.appendChild(btn);
     });
 }
 
-function clearOptions(){ chatOptions.innerHTML = ''; }
+function clearOptions() { chatOptions.innerHTML = ''; }
 
-function handleOption(id){
+function handleOption(id) {
     clearOptions();
-    if(id === 'book') startBooking();
-    else if(id === 'hours') showHours();
-    else if(id === 'services') listServices();
-    else if(id === 'cancel') startCancel();
-    else if(id === 'contact') showContact();
+    if (id === 'book') startBooking();
+    else if (id === 'services') listServices();
+    else if (id === 'hours') showHours();
+    else if (id === 'cancel') startCancel();
+    else if (id === 'contact') showContact();
 }
 
-/* ------------------ Booking flow ------------------ */
-function startBooking(){
+function startBooking() {
     flow.state = 'booking_name';
     flow.buffer = {};
-    addBotMessage('Perfecto. Dime tu nombre completo para reservar.');
+    addBotMessage('¡Perfecto! 💈 Vamos a reservar tu cita. ¿Cuál es tu nombre completo?');
 }
 
-function bookNext(){
-    if(flow.state === 'booking_name'){
-        const name = (messageInput.value || '').trim();
-        if(!name){ addBotMessage('Necesito tu nombre para continuar.'); return; }
-        flow.buffer.name = name; addUserMessage(name); messageInput.value = '';
-        flow.state = 'booking_service';
-        addBotMessage('¿Qué servicio quieres? Elige:');
-        showServiceButtons();
-    } else if(flow.state === 'booking_service'){
-        // service set via button click
-    } else if(flow.state === 'booking_datetime'){
-        const datetime = (messageInput.value || '').trim();
-        if(!datetime){ addBotMessage('Dime la fecha y hora preferida (e.g., 2025-12-01 17:00).'); return; }
-        flow.buffer.datetime = datetime; addUserMessage(datetime); messageInput.value = '';
-        // check availability via bot
-        if(!bot.isAvailable(datetime)){ addBotMessage('Ese horario no está disponible. Dame otra opción.'); return; }
-        // confirm via bot
-        const cliente = new Cliente(flow.buffer.name, flow.buffer.phone || '');
-        const ok = bot.programarCita(cliente, flow.buffer.service, flow.buffer.datetime);
-        if(ok){
-            addBotMessage(`Cita confirmada para ${flow.buffer.name} - ${flow.buffer.service} el ${flow.buffer.datetime}. Te contactaremos por ${flow.buffer.phone || 'teléfono proporcionado'}.`);
-        } else {
-            addBotMessage('No se pudo reservar ese horario. Intenta otro.');
-        }
-        flow.state = 'idle';
-        showMenuOptions();
+function startCancel() {
+    flow.state = 'cancel_input';
+    addBotMessage('Para cancelar, escribe tu teléfono (10 dígitos) y la fecha/hora de la cita.\nEjemplo: <code>5512345678 2025-12-20 15:00</code>');
+}
+
+function listServices() {
+    addBotMessage('💈 Estos son nuestros servicios:');
+    bot.servicios().forEach(s => {
+        addBotMessage(`• <strong>${s.name}</strong> — ${s.duration} min — $${s.price} MXN`);
+    });
+    showMenuOptions();
+}
+
+function showHours() {
+    addBotMessage('🕒 Horario: Lunes a Sábado de 9:00 a 19:00 hrs.\nDomingos cerrado.');
+    showMenuOptions();
+}
+
+function showContact() {
+    addBotMessage('📍 Dirección: Calle Ficticia 123, Ciudad Ejemplo\n📞 Teléfono: +52 1 123 456 7890');
+    showMenuOptions();
+}
+
+function addBotMessage(text) {
+    const div = document.createElement('div');
+    div.className = 'message bot-message';
+    div.innerHTML = text;
+    chatMessages.appendChild(div);
+    scrollChat();
+}
+
+function addUserMessage(text) {
+    const div = document.createElement('div');
+    div.className = 'message user-message';
+    div.innerHTML = `<strong>Tú:</strong> ${text}`;
+    chatMessages.appendChild(div);
+    scrollChat();
+}
+
+function scrollChat() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function typingIndicator() {
+    const div = document.createElement('div');
+    div.id = 'typing';
+    div.className = 'message bot-message';
+    div.textContent = 'AlfaBot está escribiendo...';
+    chatMessages.appendChild(div);
+    scrollChat();
+    return div;
+}
+
+function removeTyping() {
+    const typing = document.getElementById('typing');
+    if (typing) typing.remove();
+}
+
+function sendMessage() {
+    const input = messageInput.value.trim();
+    if (!input) return;
+    addUserMessage(input);
+    messageInput.value = '';
+    const typing = typingIndicator();
+    setTimeout(() => {
+        removeTyping();
+        procesarMensaje(input);
+    }, 800);
+}
+
+// --- Extracción simple de intención y entidades (NLP ligero)
+function extractPhone(text){
+    const m = text.match(/\+?\d[\d\s\-()]{8,}\d/);
+    if(!m) return null;
+    const digits = m[0].replace(/\D/g,'');
+    return digits.length >= 10 ? digits.slice(-10) : null;
+}
+
+function extractDateTime(text){
+    // busca formato YYYY-MM-DD HH:MM
+    const m = text.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/);
+    if(m) return m[1];
+    // intenta palabras tipo "mañana 15:00" -> no soportado aún
+    return null;
+}
+
+function extractService(text){
+    const s = bot.servicios();
+    const lower = text.toLowerCase();
+    // coincidencia por inclusión de palabras clave
+    for(const serv of s){
+        if(lower.includes(serv.name.toLowerCase())) return serv.name;
+        const tokens = serv.name.toLowerCase().split(/\s+/);
+        if(tokens.some(t => lower.includes(t))) return serv.name;
     }
+    return null;
 }
 
-function showServiceButtons(){
+function extractName(text){
+    // busca frases "me llamo X", "mi nombre es X"
+    let m = text.match(/me llamo\s+([A-Za-zÁÉÍÓÚÑü\s]+)/i);
+    if(m) return m[1].trim();
+    m = text.match(/mi nombre es\s+([A-Za-zÁÉÍÓÚÑü\s]+)/i);
+    if(m) return m[1].trim();
+    // si el texto corto y capitalizado, podría ser un nombre
+    if(/^[A-ZÁÉÍÓÚÑ][a-záéíóúñü]+(\s[A-ZÁÉÍÓÚÑ][a-záéíóúñü]+)?$/.test(text.trim())) return text.trim();
+    return null;
+}
+
+function parseIntent(text){
+    const lower = text.toLowerCase();
+    const intent = { name: 'unknown', phone: null, date: null, service: null, person: null };
+    if(/reservar|cita|turno|agendar/.test(lower)) intent.name = 'book';
+    if(/cancelar|eliminar|quitar/.test(lower)) intent.name = 'cancel';
+    if(/horario|horarios|abierto/.test(lower)) intent.name = 'hours';
+    if(/servicios|precio|precios|corte/.test(lower)) intent.name = 'services';
+    if(/direccion|ubicaci[oó]n|donde/.test(lower)) intent.name = 'contact';
+
+    intent.phone = extractPhone(text);
+    intent.date = extractDateTime(text);
+    intent.service = extractService(text);
+    intent.person = extractName(text);
+    return intent;
+}
+
+function procesarMensaje(mensaje) {
+    const lower = mensaje.toLowerCase();
+
+    // saludo rápido
+    if (/\b(hola|buenos|buenas|hey)\b/.test(lower)){
+        addBotMessage('¡Hola! 😎 Puedes reservar una cita, preguntar por servicios, horarios o cancelar. Escríbeme como prefieras.');
+        showMenuOptions();
+        return;
+    }
+
+    // Intento de parseo avanzado
+    const intent = parseIntent(mensaje);
+
+    // Si detectó intención de reservar y al menos un dato clave, intenta continuar
+    if(intent.name === 'book'){
+        // si tenemos todos los datos, agendamos directo
+        if(intent.person && intent.phone && intent.service && intent.date){
+            const cliente = new Cliente(intent.person, intent.phone);
+            if(bot.programarCita(cliente, intent.service, intent.date)){
+                addBotMessage(`¡Perfecto ${intent.person}! 🎉 Tu cita para <strong>${intent.service}</strong> el <strong>${intent.date}</strong> quedó confirmada.`);
+                flow.state = 'menu';
+                showMenuOptions();
+                return;
+            } else {
+                addBotMessage('Ese horario ya está ocupado. ¿Quieres intentar otro horario?');
+                flow.state = 'booking_datetime';
+                return;
+            }
+        }
+
+        // si estamos ya en flujo de reserva, dejar que el flujo maneje
+        if(flow.state.startsWith('booking')){
+            // dejar caer al manejo por estado más abajo
+        } else {
+            // iniciar flujo y prellenar datos si se encontraron
+            flow.state = 'booking_name';
+            flow.buffer = {};
+            if(intent.person) flow.buffer.name = intent.person;
+            if(intent.phone) flow.buffer.phone = intent.phone;
+            if(intent.service) flow.buffer.service = intent.service;
+            if(intent.date) flow.buffer.date = intent.date;
+            // avanzar según lo que falte
+            if(!flow.buffer.name){ addBotMessage('Perfecto, ¿cuál es tu nombre completo?'); return; }
+            if(!flow.buffer.phone){ flow.state='booking_phone'; addBotMessage(`Gracias, ${flow.buffer.name}. ¿Cuál es tu teléfono?`); return; }
+            if(!flow.buffer.service){ flow.state='booking_service'; addBotMessage('¿Qué servicio deseas?'); showServiceButtons(); return; }
+            if(!flow.buffer.date){ flow.state='booking_datetime'; addBotMessage('¿Para qué fecha y hora la quieres? (Formato: YYYY-MM-DD HH:MM)'); return; }
+        }
+    }
+
+    // Cancelación con información en texto
+    if(intent.name === 'cancel'){
+        if(intent.phone && intent.date){
+            if(bot.cancelarCita(intent.phone, intent.date)){
+                addBotMessage('He cancelado tu cita. ✅');
+            } else addBotMessage('No encontré una cita con esos datos.');
+            flow.state='menu'; showMenuOptions(); return;
+        }
+        // si faltan datos, pedirlos
+        flow.state='cancel_input'; addBotMessage('Para cancelar dime tu teléfono y la fecha/hora (ej: 5512345678 2025-12-20 15:00)'); return;
+    }
+
+    // Servicios / horarios / contacto (intents simples)
+    if(intent.name === 'services'){ listServices(); return; }
+    if(intent.name === 'hours'){ showHours(); return; }
+    if(intent.name === 'contact'){ showContact(); return; }
+
+    // --- Manejo por estado (si se inició flujo de reserva antes)
+    if (flow.state === 'booking_name') {
+        if (mensaje.trim().length < 3) {
+            addBotMessage('El nombre parece muy corto. Por favor escribe tu nombre completo.');
+            return;
+        }
+        flow.buffer.name = mensaje.trim();
+        flow.state = 'booking_phone';
+        addBotMessage(`Gracias, ${flow.buffer.name}. Ahora dime tu número de teléfono (10 dígitos).`);
+        return;
+    }
+
+    if (flow.state === 'booking_phone') {
+        const phone = extractPhone(mensaje) || mensaje.replace(/\D/g, '');
+        if (!phone || phone.length !== 10) {
+            addBotMessage('Número inválido. Por favor ingresa 10 dígitos (ej: 5512345678).');
+            return;
+        }
+        flow.buffer.phone = phone;
+        flow.state = 'booking_service';
+        addBotMessage('¿Qué servicio deseas?');
+        showServiceButtons();
+        return;
+    }
+
+    if (flow.state === 'booking_service') {
+        // intenta detectar el servicio en la frase
+        const serv = extractService(mensaje);
+        if(serv){ flow.buffer.service = serv; flow.state='booking_datetime'; addBotMessage(`Elegiste <strong>${serv}</strong>. Ahora dime la fecha y hora (YYYY-MM-DD HH:MM)`); return; }
+        // si no, mostrar opciones
+        addBotMessage('No reconocí ese servicio. Elige una de las opciones:');
+        showServiceButtons();
+        return;
+    }
+
+    if (flow.state === 'booking_datetime') {
+        const possible = extractDateTime(mensaje) || mensaje.trim();
+        const error = validarFechaHora(possible);
+        if (error) { addBotMessage(error + ' Por favor intenta con otra fecha/hora.'); return; }
+        const cliente = new Cliente(flow.buffer.name, flow.buffer.phone);
+        const servicio = flow.buffer.service;
+        if (bot.programarCita(cliente, servicio, possible)) {
+            addBotMessage(`¡Listo! 🎉 Tu cita ha sido confirmada:\n\n<strong>${flow.buffer.name}</strong>\nServicio: ${servicio}\nFecha: ${possible}\n\n¡Te esperamos en Macho Alfa!`);
+        } else {
+            addBotMessage('Lo siento, ese horario ya está ocupado. Elige otro por favor.');
+        }
+        flow.state = 'menu';
+        showMenuOptions();
+        return;
+    }
+
+    // Cancelación por estado
+    if (flow.state === 'cancel_input') {
+        const phoneMatch = extractPhone(mensaje);
+        const dateMatch = extractDateTime(mensaje) || mensaje.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/)?.[1];
+        if (!phoneMatch || !dateMatch) {
+            addBotMessage('Formato incorrecto. Ejemplo: <code>5512345678 2025-12-20 15:00</code>');
+            return;
+        }
+        const phone = phoneMatch;
+        const datetime = dateMatch;
+        if (bot.cancelarCita(phone, datetime)) {
+            addBotMessage('¡Cita cancelada exitosamente! 👍');
+        } else {
+            addBotMessage('No encontramos ninguna cita con esos datos.');
+        }
+        flow.state = 'menu';
+        showMenuOptions();
+        return;
+    }
+
+    // Fallback más amable y con ejemplo
+    addBotMessage('Lo siento, no entendí completamente. Puedes escribir algo como: "Reservar para 2025-12-20 15:00 Fade Clásico, me llamo Juan, mi teléfono 5512345678" o usar los botones.');
+    showMenuOptions();
+}
+
+function showServiceButtons() {
     clearOptions();
-    bot.servicios().forEach(s=>{
-        const b=document.createElement('button'); b.textContent = `${s.name} • ${s.duration}m`; b.onclick=()=>{
-            flow.buffer.service = s.name; flow.state='booking_phone'; clearOptions(); addBotMessage(`Has elegido ${s.name}. Dime tu teléfono para confirmar.`);
+    bot.servicios().forEach(s => {
+        const btn = document.createElement('button');
+        btn.textContent = `${s.name} (${s.duration} min)`;
+        btn.onclick = () => {
+            flow.buffer.service = s.name;
+            flow.state = 'booking_datetime';
+            clearOptions();
+            addBotMessage(`Elegiste <strong>${s.name}</strong>. ¿Para qué fecha y hora?\n(Formato: 2025-12-20 15:00)`);
         };
-        chatOptions.appendChild(b);
+        chatOptions.appendChild(btn);
     });
 }
 
-function isAvailable(datetime){
-    return bot.isAvailable(datetime);
-}
-
-/* ------------------ Cancel flow ------------------ */
-function startCancel(){
-    flow.state='cancel_name'; flow.buffer={}; addBotMessage('Para cancelar, dime tu nombre completo.');
-}
-
-function cancelNext(){
-    if(flow.state==='cancel_name'){
-        const name=(messageInput.value||'').trim(); if(!name){ addBotMessage('Necesito el nombre.'); return; }
-        flow.buffer.name=name; addUserMessage(name); messageInput.value=''; flow.state='cancel_phone'; addBotMessage('Ahora dime tu teléfono registrado.');
-    } else if(flow.state==='cancel_phone'){
-        const phone=(messageInput.value||'').trim(); if(!phone){ addBotMessage('Necesito el teléfono.'); return; }
-        addUserMessage(phone); messageInput.value='';
-        const ok = bot.cancelarCita(flow.buffer.name, phone);
-        if(ok){ addBotMessage('Cita cancelada correctamente.'); }
-        else addBotMessage('No encontramos ninguna cita con esos datos.');
-        flow.state='idle'; showMenuOptions();
+function validarFechaHora(input) {
+    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(input)) {
+        return '⚠️ Formato incorrecto. Usa: YYYY-MM-DD HH:MM';
     }
-}
-
-/* ------------------ Utilities: hours/services/contact ------------------ */
-function showHours(){
-    addBotMessage('Horarios disponibles: Lunes-Viernes 09:00 - 20:00. Sábados 09:00 - 15:00');
-    showMenuOptions();
-}
-
-function listServices(){
-    bot.servicios().forEach(s=> addBotMessage(`${s.name} — ${s.duration} min — $${s.price} MXN`));
-    showMenuOptions();
-}
-
-function showContact(){
-    addBotMessage('Tel: +52 1 123 456 7890 • WhatsApp: +52 1 123 456 7890');
-    showMenuOptions();
-}
-
-/* ------------------ Message UI ------------------ */
-function addBotMessage(text){
-    const d=document.createElement('div'); d.className='message bot-message'; d.innerHTML=`<strong>AlfaBot:</strong> ${text}`; chatMessages.appendChild(d); scrollChat();
-}
-function addUserMessage(text){
-    const d=document.createElement('div'); d.className='message user-message'; d.innerHTML=`<strong>Tú:</strong> ${text}`; chatMessages.appendChild(d); scrollChat();
-}
-function scrollChat(){ chatMessages.scrollTop = chatMessages.scrollHeight; }
-
-/* ------------------ Input handling ------------------ */
-function sendMessage(){
-    const txt = (messageInput.value||'').trim(); if(!txt) return;
-    if(flow.state.startsWith('booking') && (flow.state==='booking_name' || flow.state==='booking_datetime' || flow.state==='booking_phone')){
-        if(flow.state==='booking_name' || flow.state==='booking_datetime') { addUserMessage(txt); }
-        if(flow.state==='booking_name'){
-            flow.buffer.name = txt; messageInput.value=''; flow.state='booking_service'; addBotMessage('Selecciona el servicio:'); showServiceButtons(); return;
-        }
-        if(flow.state==='booking_phone'){
-            flow.buffer.phone = txt; messageInput.value=''; flow.state='booking_datetime'; addBotMessage('Dime la fecha y hora preferida (e.g., 2025-12-01 17:00)'); return;
-        }
-        if(flow.state==='booking_datetime'){
-            // handled in bookNext
-            bookNext(); return;
-        }
+    const now = new Date();
+    const selected = new Date(input.replace(' ', 'T'));
+    if (selected <= now) {
+        return '⚠️ La fecha debe ser futura.';
     }
-
-    if(flow.state.startsWith('cancel')){ addUserMessage(txt); cancelNext(); return; }
-
-    // generic commands
-    addUserMessage(txt);
-    const l = txt.toLowerCase();
-    if(l.includes('horario') || l.includes('dispon')) showHours();
-    else if(l.includes('servicio') || l.includes('precio')) listServices();
-    else if(l.includes('reserv') || l.includes('cita')) startBooking();
-    else if(l.includes('cancel')) startCancel();
-    else addBotMessage('Escribe una opción o usa los botones.');
-    messageInput.value='';
+    if (!bot.isAvailable(input)) {
+        return '⚠️ Ese horario ya está ocupado.';
+    }
+    return null;
 }
 
-function handleKeyPress(e){ if(e.key === 'Enter') sendMessage(); }
+function handleKeyPress(e) {
+    if (e.key === 'Enter') sendMessage();
+}
 
-/* popup handling (service details) */
-function showServicesPopup(title, price, img){
+function showServicesPopup(title, price, imgSrc) {
     document.getElementById('popupTitle').textContent = title;
     document.getElementById('popupPrice').textContent = price;
-    document.getElementById('popupImage').src = img || '';
-    document.getElementById('servicePopup').style.display='flex';
+    document.getElementById('popupImage').src = imgSrc;
+    document.getElementById('popupImage').alt = `Imagen de ${title}`;
+    document.getElementById('servicePopup').style.display = 'flex';
 }
-function closePopup(){ document.getElementById('servicePopup').style.display='none'; }
+
+function closePopup() {
+    document.getElementById('servicePopup').style.display = 'none';
+}
